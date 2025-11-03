@@ -1,0 +1,83 @@
+# Dataset Selection Criteria for CELLxGENE Census
+# All datasets must meet ALL criteria to be included
+
+# CELLxGENE Census version (use "stable" for most recent stable release)
+census_version: "stable"
+
+# Cell type annotations (must contain at least one)
+inclusion_criteria:
+  cell_types:
+    - "natural killer cell"
+    - "NK cell"
+    - "CD56-positive, CD16-positive natural killer cell"
+    - "CD56-positive, CD16-negative natural killer cell"
+    - "CD56-positive natural killer cell"
+    - "CD16-positive natural killer cell"
+
+  # Disease/condition status (only healthy controls)
+  disease_status:
+    - "normal"
+    - "healthy"
+    - "control"
+    - "Normal"
+    - "Healthy"
+    - "Control"
+
+  # Tissue types (peripheral blood focus)
+  tissue_general:
+    - "blood"
+    - "peripheral blood"
+    - "PBMC"
+    - "whole blood"
+    - "venous blood"
+
+  # Sequencing assays (standardization)
+  assay:
+    - "10x 3' v2"
+    - "10x 3' v3"
+    - "10x 5' v2"
+    - "10x 5' v1"
+    - "10x 3' transcription profiling"
+
+  # Organism (human only)
+  organism: "Homo sapiens"
+
+  # Age metadata requirements
+  age_required: true
+  min_age: 18  # Adult subjects only
+  max_age: 100
+
+  # Dataset quality filters
+  min_nk_cells: 50  # Minimum NK cells per dataset to be included
+  min_total_cells: 100  # Minimum total cells in dataset
+
+# Age group definitions
+age_groups:
+  young:
+    min: 18
+    max: 34
+    label: "Young"
+
+  adult:
+    min: 35
+    max: 59
+    label: "Adult"
+
+  aged:
+    min: 60
+    max: 100
+    label: "Aged"
+
+# Data download settings
+download:
+  output_dir: "data/raw"
+  metadata_dir: "data/metadata"
+  file_format: "h5ad"
+  overwrite_existing: false
+  validate_checksums: true
+
+# Logging configuration
+logging:
+  log_dir: "results/reports"
+  log_file: "dataset_download.log"
+  log_level: "INFO"

@@ -1,0 +1,152 @@
+# Quality Control Thresholds and Parameters
+# All parameters are based on single-cell RNA-seq best practices
+
+# Basic QC metrics thresholds
+qc_metrics:
+  # Minimum number of genes detected per cell
+  min_genes: 200
+
+  # Minimum UMI counts per cell
+  min_counts: 500
+
+  # Maximum percentage of mitochondrial gene expression
+  # High MT% indicates dying/stressed cells
+  max_pct_mt: 20.0
+
+  # Maximum percentage of ribosomal gene expression
+  # Extremely high ribo% can indicate technical artifacts
+  max_pct_ribo: 50.0
+
+  # Maximum percentage of hemoglobin gene expression
+  # High HB% indicates erythrocyte contamination
+  max_pct_hb: 10.0
+
+# Gene filtering criteria
+gene_filtering:
+  # Minimum number of cells expressing a gene
+  min_cells: 3
+
+  # Remove genes with zero variance
+  remove_zero_variance: true
+
+# Outlier detection parameters (MAD-based approach)
+outlier_detection:
+  # Method: Median Absolute Deviation (robust to outliers)
+  method: "MAD"
+
+  # Number of MADs from median to consider outlier
+  n_mads: 5
+
+  # Metrics to apply MAD filtering
+  metrics:
+    - "n_genes_by_counts"
+    - "total_counts"
+    - "pct_counts_mt"
+
+# Doublet detection parameters
+doublet_detection:
+  # Enable doublet detection
+  enable: true
+
+  # Methods to use (multiple methods recommended for consensus)
+  methods:
+    - "scrublet"
+    - "doubletdetection"
+
+  # Require consensus between methods
+  consensus: true
+
+  # Scrublet-specific parameters
+  scrublet:
+    expected_doublet_rate: 0.06  # 6% expected doublet rate (typical for 10X)
+    min_counts: 2
+    min_cells: 3
+    min_gene_variability_pctile: 85
+    n_prin_comps: 30
+
+  # DoubletDetection-specific parameters
+  doubletdetection:
+    boost_rate: 0.25
+    n_iters: 25
+    use_phenograph: false
+    standard_scaling: true
+
+# Cell type-specific filtering (for NK cells)
+cell_type_filtering:
+  # NK cell marker genes (used for validation, not filtering)
+  nk_markers:
+    - "NCAM1"    # CD56
+    - "FCGR3A"   # CD16
+    - "NKG7"
+    - "GNLY"
+    - "KLRB1"
+    - "KLRD1"
+    - "KLRF1"
+    - "NCR1"
+    - "PRF1"
+    - "GZMB"
+
+  # Use CELLxGENE annotations (do not re-annotate)
+  use_cellxgene_annotations: true
+
+  # Cell type column name in AnnData.obs
+  cell_type_column: "cell_type"
+
+# Batch effect assessment
+batch_assessment:
+  # Key for batch effects (dataset/sample origin)
+  batch_key: "dataset_id"
+
+  # Additional covariates to check
+  covariates:
+    - "donor_id"
+    - "sex"
+    - "tissue"
+    - "assay"
+
+# Quality control visualization settings
+visualization:
+  # Metrics to plot in violin plots
+  violin_metrics:
+    - "n_genes_by_counts"
+    - "total_counts"
+    - "pct_counts_mt"
+    - "pct_counts_ribo"
+    - "pct_counts_hb"
+
+  # Group violin plots by
+  group_by: "dataset_id"
+
+  # Color palette
+  palette: "Set2"
+
+  # Figure DPI for saved plots
+  dpi: 300
+
+  # Figure format
+  format: "pdf"
+
+# Reporting
+reporting:
+  # Generate HTML QC report
+  generate_html_report: true
+
+  # Include diagnostic plots
+  include_plots: true
+
+  # Report output directory
+  output_dir: "results/reports"
+
+  # Report filename
+  report_name: "qc_report.html"
+
+# Memory optimization
+memory:
+  # Use sparse matrices throughout
+  use_sparse: true
+
+  # Garbage collection frequency
+  gc_frequency: "per_dataset"  # Options: per_dataset, per_step, manual
+
+  # Maximum cells to load at once (for very large datasets)
+  max_cells_per_chunk: 100000
