@@ -53,6 +53,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reproducible analysis with fixed random seeds
 - Comprehensive logging and checkpointing
 
+## [1.1.0] - 2025-01-03
+
+### Updated
+- **CRITICAL**: Updated to CELLxGENE Census v1.17.0+ API
+- `src/download.py`: Now uses new `get_obs()` method (more efficient)
+- Context manager pattern for census connections (best practice)
+- Support for categorical columns (Census v1.13.0+ requirement)
+- Census version now points to 2025-01-30 LTS (109M human cells)
+- `requirements.txt`: cellxgene-census>=1.17.0
+
+### Added
+- `UPDATES_2025.md`: Comprehensive migration guide for Census API changes
+- Fallback method in `discover_datasets()` for API compatibility
+- Census version info logging (release date, total cells)
+- Better filter construction for SOMA value filters
+
+### Changed
+- More efficient cell metadata querying
+- Improved logging with census statistics
+- Better error handling for API failures
+
+### Fixed
+- Compatibility with latest CELLxGENE Census schema (2.1.0)
+- Categorical column handling in metadata
+
 ## [Unreleased]
 
 ### Planned Features

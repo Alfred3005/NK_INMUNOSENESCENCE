@@ -85,8 +85,9 @@ black==24.4.2
 flake8==7.1.0
 mypy==1.10.1
 
-# CELLxGENE Census data access
-cellxgene-census==1.14.1
+# CELLxGENE Census data access (updated 2025-01-03)
+# v1.17.0+ includes new get_obs() API, spatial data support, and embeddings search
+cellxgene-census>=1.17.0
 
 # R interface for DESeq2 (pseudobulk DE)
 rpy2==3.5.16

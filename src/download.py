@@ -41,11 +41,14 @@ def discover_datasets(
     """
     Discover datasets from CELLxGENE Census matching inclusion criteria.
 
+    UPDATED 2025: Uses new get_obs() API introduced in Census v1.13.0+
+    Supports latest census version (2025-01-30 LTS with 109M human cells)
+
     Parameters
     ----------
     config : dict
         Configuration dictionary from datasets.yaml with keys:
-        - census_version: Census version to use
+        - census_version: Census version to use ("stable", "latest", or specific date)
         - inclusion_criteria: Dict with cell_types, disease_status, etc.
     logger : logging.Logger, optional
         Logger instance
@@ -76,15 +79,18 @@ def discover_datasets(
     census_version = config.get('census_version', 'stable')
     criteria = config['inclusion_criteria']
 
-    # Open census
+    # Open census using context manager (best practice)
     logger.info(f"Opening CELLxGENE Census (version: {census_version})")
-    census = cellxgene_census.open_soma(census_version=census_version)
 
-    try:
+    with cellxgene_census.open_soma(census_version=census_version) as census:
+        # Get census version info
+        census_info = cellxgene_census.get_census_version_description(census_version)
+        logger.info(f"Census release: {census_info['release_date']}")
+        logger.info(f"Total cells: {census_info.get('soma.census_summary.unique_cell_count', 'N/A')}")
+
         # Get dataset metadata
         logger.info("Retrieving dataset metadata...")
         datasets = census["census_info"]["datasets"].read().concat().to_pandas()
-
         logger.info(f"Total datasets in census: {len(datasets)}")
 
         # Filter by organism
@@ -92,68 +98,67 @@ def discover_datasets(
         datasets = datasets[datasets['organism'] == organism]
         logger.info(f"After organism filter ({organism}): {len(datasets)}")
 
-        # Get cell metadata for filtering
-        logger.info("Querying cell metadata (this may take a few minutes)...")
+        # Build value filter for cell querying (NEW METHOD)
+        logger.info("Querying cell metadata using get_obs() API...")
 
-        # Query expression data to get cell-level metadata
-        query = census["census_data"]["homo_sapiens"]
-
-        # Get obs (cell metadata)
-        obs = query.obs.read(
-            column_names=[
-                "dataset_id",
-                "cell_type",
-                "disease",
-                "tissue_general",
-                "assay",
-                "donor_id",
-                "sex",
-                "is_primary_data"
-            ],
-            value_filter="is_primary_data == True"
-        ).concat().to_pandas()
-
-        logger.info(f"Retrieved metadata for {len(obs):,} cells")
-
-        # Filter by cell type (NK cells)
+        # Construct filter for NK cells from healthy controls in blood
         cell_types = criteria['cell_types']
-        nk_mask = obs['cell_type'].str.lower().str.contains(
-            '|'.join([ct.lower() for ct in cell_types]),
-            na=False
-        )
-        nk_cells = obs[nk_mask]
+        disease_status = criteria['disease_status']
+        tissues = criteria['tissue_general']
+        assays = criteria['assay']
 
-        logger.info(
-            f"Found {len(nk_cells):,} NK cells "
-            f"({len(nk_cells)/len(obs)*100:.2f}% of total)"
-        )
+        # Build SOMA value filter string
+        # Note: Census v1.13.0+ uses categorical columns
+        cell_type_filter = " or ".join([f"cell_type == '{ct}'" for ct in cell_types])
+        disease_filter = " or ".join([f"disease == '{ds}'" for ds in disease_status])
+        tissue_filter = " or ".join([f"tissue_general == '{t}'" for t in tissues])
+        assay_filter = " or ".join([f"assay == '{a}'" for a in assays])
 
-        # Filter by disease status (healthy/control)
-        disease_status = [ds.lower() for ds in criteria['disease_status']]
-        disease_mask = nk_cells['disease'].str.lower().isin(disease_status)
-        nk_cells = nk_cells[disease_mask]
-
-        logger.info(
-            f"After disease filter (healthy/control): {len(nk_cells):,} cells"
-        )
-
-        # Filter by tissue
-        tissues = [t.lower() for t in criteria['tissue_general']]
-        tissue_mask = nk_cells['tissue_general'].str.lower().isin(tissues)
-        nk_cells = nk_cells[tissue_mask]
-
-        logger.info(
-            f"After tissue filter (blood): {len(nk_cells):,} cells"
+        value_filter = (
+            f"is_primary_data == True and "
+            f"({cell_type_filter}) and "
+            f"({disease_filter}) and "
+            f"({tissue_filter}) and "
+            f"({assay_filter})"
         )
 
-        # Filter by assay
-        assays = [a.lower() for a in criteria['assay']]
-        assay_mask = nk_cells['assay'].str.lower().isin(assays)
-        nk_cells = nk_cells[assay_mask]
+        logger.info("Applying filters:")
+        logger.info(f"  Cell types: {', '.join(cell_types[:3])}...")
+        logger.info(f"  Disease: {', '.join(disease_status)}")
+        logger.info(f"  Tissue: {', '.join(tissues)}")
+        logger.info(f"  Assay: {', '.join(assays[:2])}...")
 
-        logger.info(
-            f"After assay filter (10X): {len(nk_cells):,} cells"
-        )
+        # Use get_obs() API (more efficient)
+        try:
+            nk_cells = cellxgene_census.get_obs(
+                census,
+                "homo_sapiens",
+                value_filter=value_filter,
+                column_names=["dataset_id", "cell_type", "disease", "tissue_general", "assay", "donor_id", "sex"]
+            )
+
+            logger.info(f"Found {len(nk_cells):,} NK cells matching all criteria")
+
+        except Exception as e:
+            logger.error(f"Error querying with get_obs(): {str(e)}")
+            logger.info("Falling back to traditional obs.read() method...")
+
+            # Fallback to old method
+            query = census["census_data"]["homo_sapiens"]
+            obs = query.obs.read(
+                column_names=["dataset_id", "cell_type", "disease", "tissue_general", "assay", "donor_id", "sex", "is_primary_data"],
+                value_filter="is_primary_data == True"
+            ).concat().to_pandas()
+
+            # Apply filters manually
+            nk_cells = obs[
+                obs['cell_type'].isin(cell_types) &
+                obs['disease'].isin(disease_status) &
+                obs['tissue_general'].isin(tissues) &
+                obs['assay'].isin(assays)
+            ]
+
+            logger.info(f"Found {len(nk_cells):,} NK cells (fallback method)")
 
         # Count NK cells per dataset
         nk_counts = nk_cells.groupby('dataset_id').size().reset_index(name='nk_cell_count')
@@ -199,9 +204,8 @@ def discover_datasets(
 
         return matching_datasets
 
-    finally:
-        census.close()
-        logger.info("Census connection closed")
+    # Context manager automatically closes census connection
+    logger.info("Census connection closed")
 
 
 def download_dataset(
