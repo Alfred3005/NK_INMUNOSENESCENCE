@@ -38,3 +38,8 @@ __all__ = [
     "integration",
     "visualization",
 ]
+
+# Version info
+__version__ = "1.0.0"
+__author__ = "Alfred3005"
+__description__ = "NK Immunosenescence Analysis Pipeline"
