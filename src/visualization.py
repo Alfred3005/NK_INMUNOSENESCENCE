@@ -114,9 +114,9 @@ def plot_umap_grid(
 
 def plot_volcano(
     de_results: pd.DataFrame,
+    output_path: Path,
     lfc_threshold: float = 0.5,
     fdr_threshold: float = 0.05,
-    output_path: Path,
     top_n_labels: int = 20,
     figsize: Tuple[int, int] = (10, 8),
     logger: Optional[logging.Logger] = None
@@ -397,9 +397,9 @@ def plot_integration_metrics(
 
 def plot_age_distribution(
     adata: ad.AnnData,
+    output_path: Path,
     age_key: str = 'donor_age',
     age_group_key: str = 'age_group',
-    output_path: Path,
     figsize: Tuple[int, int] = (12, 5),
     logger: Optional[logging.Logger] = None
 ) -> None:
